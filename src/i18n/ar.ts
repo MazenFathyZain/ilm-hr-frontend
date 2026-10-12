@@ -1,7 +1,7 @@
 import type { TKey } from './en'
 
 export const ar: Record<TKey, string> = {
-  app_name: 'علم',
+  app_name: 'Ilm HR',
   app_tagline: 'لإحياء التراث والخدمات الرقمية',
   save: 'حفظ',
   save_changes: 'حفظ التغييرات',
