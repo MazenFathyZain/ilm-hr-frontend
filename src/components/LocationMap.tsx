@@ -39,7 +39,7 @@ export function LocationMap({ points, editing, onPick, height = 380 }: {
       <MapContainer center={CAIRO} zoom={11} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {others.map((p) => {
-          const color = p.is_active === false ? '#9a8f82' : '#9E7E45'
+          const color = p.is_active === false ? '#8aa3b5' : '#3398CF'
           return (
             <Fragment key={p.id ?? p.name}>
               <Circle center={[p.latitude, p.longitude]} radius={p.radius_meters} pathOptions={{ color, weight: 2, fillOpacity: editing ? 0.08 : 0.2 }} />
@@ -52,8 +52,8 @@ export function LocationMap({ points, editing, onPick, height = 380 }: {
         })}
         {editing && Number.isFinite(editing.latitude) && Number.isFinite(editing.longitude) && (
           <>
-            <Circle center={[editing.latitude, editing.longitude]} radius={editing.radius_meters} pathOptions={{ color: '#6B3410', weight: 2, fillColor: '#C9A96E', fillOpacity: 0.3 }} />
-            <CircleMarker center={[editing.latitude, editing.longitude]} radius={6} pathOptions={{ color: '#fff', weight: 2, fillColor: '#6B3410', fillOpacity: 1 }} />
+            <Circle center={[editing.latitude, editing.longitude]} radius={editing.radius_meters} pathOptions={{ color: '#17689A', weight: 2, fillColor: '#5BB0DE', fillOpacity: 0.3 }} />
+            <CircleMarker center={[editing.latitude, editing.longitude]} radius={6} pathOptions={{ color: '#fff', weight: 2, fillColor: '#17689A', fillOpacity: 1 }} />
           </>
         )}
         {onPick && <ClickToPick onPick={onPick} />}

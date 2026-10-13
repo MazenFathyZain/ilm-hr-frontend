@@ -32,7 +32,7 @@ export function Avatar({ name, size = 34 }: { name: string; size?: number }) {
   // Stable warm hue per name so people are easy to tell apart in lists.
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
   return (
-    <span className="avatar" style={{ width: size, height: size, fontSize: size * 0.38, ['--av-h' as string]: `${(hue % 50) + 15}` }} aria-hidden>
+    <span className="avatar" style={{ width: size, height: size, fontSize: size * 0.38, ['--av-h' as string]: `${(hue % 60) + 180}` }} aria-hidden>
       {initials(name)}
     </span>
   )
