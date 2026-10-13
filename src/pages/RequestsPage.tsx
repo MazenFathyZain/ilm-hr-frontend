@@ -60,7 +60,7 @@ export function RequestsPage() {
               <tbody>
                 {data.map((r) => (
                   <tr key={r.id}>
-                    <td><Person name={r.user_name} sub={r.team_name ?? t('no_team')} /></td>
+                    <td><Person name={r.user_name} avatar={r.user_avatar_url} sub={r.team_name ?? t('no_team')} /></td>
                     <td>
                       <span className={`type-pill type-${r.type}`}>{requestTypeLabel(r.type)}</span> <span className="muted small">#{r.id}</span>
                       <div className="small">{requestSummary(r)}</div>
@@ -126,7 +126,7 @@ function ReviewModal({ request, decision, onClose, onDone }: { request: HrReques
       </>
     }>
       <div className="review-summary">
-        <Person name={request.user_name} sub={request.team_name} />
+        <Person name={request.user_name} avatar={request.user_avatar_url} sub={request.team_name} />
         <p className="small">{requestSummary(request)}</p>
         {request.reason && <blockquote>{request.reason}</blockquote>}
       </div>

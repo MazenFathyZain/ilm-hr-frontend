@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, uploadFile } from '../api/client'
 import type { AttendanceRecord, HrRequest, LeaveBalances, MonthSummary, User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
@@ -20,6 +20,8 @@ export function EmployeeDetailPage() {
   const toast = useToast()
   const [month, setMonth] = useState(thisMonth())
   const [editing, setEditing] = useState(false)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const { data: u, error, loading, reload } = useApi(() => api.get<Detail>(`/users/${id}`), [id])
   const att = useApi(() => api.get<{ summary: MonthSummary; records: AttendanceRecord[] }>(`/users/${id}/attendance`, { month }), [id, month])
   const reqs = useApi(() => api.get<HrRequest[]>('/requests', { user_id: id }), [id])
@@ -40,6 +42,32 @@ export function EmployeeDetailPage() {
     }
   }
 
+  async function changePhoto(file: File | undefined) {
+    if (!file || !u) return
+    setPhotoBusy(true)
+    try {
+      await uploadFile(`/users/${u.id}/avatar`, 'avatar', file)
+      toast(t('photo_updated'))
+      reload()
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    } finally {
+      setPhotoBusy(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+
+  async function removePhoto() {
+    if (!u) return
+    try {
+      await api.del(`/users/${u.id}/avatar`)
+      toast(t('photo_removed'))
+      reload()
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    }
+  }
+
   const lb = u.leave_balances
   const s = att.data?.summary
   const pct = (b: { total: number; remaining: number }) => (b.total ? Math.max(0, Math.min(100, (b.remaining / b.total) * 100)) : 0)
@@ -48,7 +76,14 @@ export function EmployeeDetailPage() {
     <>
       <Link to="/employees" className="back-link"><Icon name="chevron" size={14} className="flip" /> {t('all_employees_back')}</Link>
       <section className="profile-hero pattern-bg">
-        <Avatar name={u.name} size={72} />
+        {isManager ? (
+          <button type="button" className="avatar-edit" onClick={() => fileInput.current?.click()} disabled={photoBusy}
+            title={`${u.avatar_url ? t('change_photo') : t('upload_photo')} – ${t('photo_hint')}`} aria-label={u.avatar_url ? t('change_photo') : t('upload_photo')}>
+            <Avatar name={u.name} src={u.avatar_url} size={72} />
+            <span className="avatar-edit-badge">{photoBusy ? <span className="spinner spinner-inline" /> : <Icon name="plus" size={14} />}</span>
+            <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic" hidden onChange={(e) => changePhoto(e.target.files?.[0])} />
+          </button>
+        ) : <Avatar name={u.name} src={u.avatar_url} size={72} />}
         <div className="profile-hero-text">
           <h1>{u.name}</h1>
           <div className="profile-meta">
@@ -60,6 +95,7 @@ export function EmployeeDetailPage() {
         </div>
         {isManager && (
           <div className="page-actions">
+            {u.avatar_url && <Button variant="ghost" onClick={removePhoto}>{t('remove_photo')}</Button>}
             {u.id !== me?.id && <Button variant="secondary" onClick={toggleActive}>{u.is_active ? t('deactivate') : t('reactivate')}</Button>}
             <Button icon="settings" onClick={() => setEditing(true)}>{t('edit')}</Button>
           </div>

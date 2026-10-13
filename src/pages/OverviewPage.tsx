@@ -64,7 +64,7 @@ export function OverviewPage() {
             <ul className="list">
               {data.pending_requests.map((r) => (
                 <li key={r.id} className="list-row">
-                  <Person name={r.user_name} sub={<><strong className="text">{requestTypeLabel(r.type)}</strong> · {requestSummary(r) || r.reason}</>} />
+                  <Person name={r.user_name} avatar={r.user_avatar_url} sub={<><strong className="text">{requestTypeLabel(r.type)}</strong> · {requestSummary(r) || r.reason}</>} />
                   <StatusBadge status={r.status} />
                 </li>
               ))}

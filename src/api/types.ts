@@ -22,6 +22,7 @@ export interface User {
   casual_leave_balance: number
   is_active: boolean
   created_at: string
+  avatar_url: string | null
   locations: LocationRef[]
 }
 
@@ -41,7 +42,7 @@ export interface Team {
   leader_id: number | null
   leader_name: string | null
   member_count: number
-  members?: Pick<User, 'id' | 'name' | 'email' | 'job_title' | 'role' | 'is_active'>[]
+  members?: Pick<User, 'id' | 'name' | 'email' | 'job_title' | 'role' | 'is_active' | 'avatar_url'>[]
 }
 
 export interface Location {
@@ -60,6 +61,7 @@ export interface AttendanceRecord {
   id: number
   user_id: number
   user_name: string
+  user_avatar_url: string | null
   employee_code: string | null
   team_name: string | null
   work_date: string
@@ -72,6 +74,9 @@ export interface AttendanceRecord {
   late_minutes: number
   is_late: boolean
   worked_minutes: number | null
+  check_out_method: 'manual' | 'left_location' | 'admin' | null
+  left_location: boolean
+  away_minutes: number
   note: string | null
   edited_by: number | null
 }
@@ -80,6 +85,7 @@ export type BoardStatus = 'present' | 'late' | 'absent' | 'on_leave' | 'day_off'
 export interface BoardRow {
   id: number
   name: string
+  avatar_url: string | null
   employee_code: string | null
   job_title: string | null
   team_name: string | null
@@ -106,6 +112,7 @@ export interface HrRequest {
   id: number
   user_id: number
   user_name: string
+  user_avatar_url: string | null
   employee_code: string | null
   job_title: string | null
   team_name: string | null
@@ -176,6 +183,7 @@ export interface Settings {
   default_casual_leave: number
   required_documents: string[]
   currency: string
+  auto_checkout_on_leave: boolean
 }
 
 export interface Holiday { date: string; name: string }

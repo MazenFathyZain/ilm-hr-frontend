@@ -1,4 +1,8 @@
-const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/admin`
+const ORIGIN = import.meta.env.VITE_API_URL ?? ''
+const BASE = `${ORIGIN}/api/admin`
+
+/** Absolute URL for files the API returns as relative paths (e.g. profile photos). */
+export const fileUrl = (path: string | null | undefined) => (!path ? null : /^https?:\/\//.test(path) ? path : `${ORIGIN}${path}`)
 const TOKEN_KEY = 'hr.token'
 
 export class ApiError extends Error {
@@ -65,4 +69,14 @@ export async function download(path: string, query?: Query, fallbackName = 'down
   const a = Object.assign(document.createElement('a'), { href: url, download: decodeURIComponent(name) })
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/** Uploads one file as multipart/form-data. */
+export async function uploadFile<T>(path: string, field: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append(field, file)
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${tokenStore.get()}` }, body: form })
+  const json = await res.json().catch(() => ({ message: res.statusText }))
+  if (!res.ok) throw new ApiError(res.status, json.message ?? 'Upload failed', json.code)
+  return json.data as T
 }

@@ -71,7 +71,7 @@ export function EmployeesPage() {
                   <tr key={u.id} onClick={() => navigate(`/employees/${u.id}`)}>
                     <td>
                       <Link to={`/employees/${u.id}`} onClick={(e) => e.stopPropagation()} className="plain-link">
-                        <Person name={u.name} sub={<><span className="mono">{u.employee_code}</span> · {u.job_title ?? u.email}</>} />
+                        <Person name={u.name} avatar={u.avatar_url} sub={<><span className="mono">{u.employee_code}</span> · {u.job_title ?? u.email}</>} />
                       </Link>
                     </td>
                     <td><Badge tone={roleTone(u.role)}>{roleLabel(u.role)}</Badge></td>

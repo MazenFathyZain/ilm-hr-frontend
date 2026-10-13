@@ -1,4 +1,5 @@
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { fileUrl } from '../api/client'
 import logo from '../assets/logo.png'
 import { useI18n } from '../i18n/I18nContext'
 import { STATUS_TONE, initials, statusLabel } from '../lib/format'
@@ -28,7 +29,9 @@ export function StatusBadge({ status, kind = 'request', label }: { status: strin
   return <Badge tone={STATUS_TONE[status]}><span className="badge-dot" />{label ?? statusLabel(kind, status)}</Badge>
 }
 
-export function Avatar({ name, size = 34 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 34, src }: { name: string; size?: number; src?: string | null }) {
+  const url = fileUrl(src)
+  if (url) return <img src={url} alt="" width={size} height={size} className="avatar avatar-img" loading="lazy" />
   // Stable warm hue per name so people are easy to tell apart in lists.
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
   return (
@@ -38,10 +41,10 @@ export function Avatar({ name, size = 34 }: { name: string; size?: number }) {
   )
 }
 
-export function Person({ name, sub }: { name: string; sub?: ReactNode }) {
+export function Person({ name, sub, avatar }: { name: string; sub?: ReactNode; avatar?: string | null }) {
   return (
     <span className="person">
-      <Avatar name={name} />
+      <Avatar name={name} src={avatar} />
       <span className="person-text">
         <strong>{name}</strong>
         {sub && <span className="muted small">{sub}</span>}

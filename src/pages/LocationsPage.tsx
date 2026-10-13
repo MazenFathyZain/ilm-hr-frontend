@@ -167,7 +167,7 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
               {users.data?.map((u) => (
                 <label key={u.id} className="picker-option">
                   <input type="checkbox" checked={assigned.includes(u.id)} onChange={() => setUserIds(assigned.includes(u.id) ? assigned.filter((x) => x !== u.id) : [...assigned, u.id])} />
-                  <Avatar name={u.name} size={26} />
+                  <Avatar name={u.name} src={u.avatar_url} size={26} />
                   <span><strong>{u.name}</strong> <span className="muted small">· {u.team_name ?? t('no_team')}{u.locations.length ? ` · ${t('locations_n', { n: u.locations.length })}` : ''}</span></span>
                 </label>
               ))}

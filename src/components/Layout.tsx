@@ -70,7 +70,7 @@ export function Layout() {
         </nav>
         <div className="sidebar-footer">
           <div className="me">
-            {user && <Avatar name={user.name} size={36} />}
+            {user && <Avatar name={user.name} src={user.avatar_url} size={36} />}
             <div className="me-text">
               <div className="me-name">{user?.name}</div>
               <div className="me-role">{user && roleLabel(user.role)}</div>

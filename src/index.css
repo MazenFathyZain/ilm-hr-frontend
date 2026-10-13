@@ -365,6 +365,7 @@ legend { padding: 0 6px; font-weight: 700; font-size: 13px; }
   background: hsl(var(--av-h) 45% 88%); color: hsl(var(--av-h) 55% 26%);
   box-shadow: 0 0 0 2px var(--surface);
 }
+.avatar-img { object-fit: cover; background: var(--surface-3); }
 :root[data-theme='dark'] .avatar { background: hsl(var(--av-h) 30% 24%); color: hsl(var(--av-h) 55% 80%); }
 .person { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .person-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
@@ -526,3 +527,14 @@ tbody tr:hover { background: var(--surface-2); }
   .login-card .ornament { align-self: center; }
   .login-card .field { text-align: start; }
 }
+
+/* Profile photo editing on the employee page */
+.avatar-edit { position: relative; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 50%; }
+.avatar-edit .avatar-edit-badge {
+  position: absolute; inset-inline-end: -2px; bottom: -2px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--primary); color: var(--on-primary); box-shadow: 0 0 0 2px var(--surface);
+}
+.avatar-edit:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.left-badge { margin-top: 4px; }
+.switch-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+.switch-row input { margin-top: 3px; width: 18px; height: 18px; }

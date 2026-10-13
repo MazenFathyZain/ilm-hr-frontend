@@ -380,6 +380,16 @@ export const en = {
   wd_4: 'Thursday',
   wd_5: 'Friday',
   wd_6: 'Saturday',
+  left_location: 'Left location',
+  away_n: '{time} away',
+  change_photo: 'Change photo',
+  upload_photo: 'Upload photo',
+  remove_photo: 'Remove photo',
+  photo_updated: 'Photo updated',
+  photo_removed: 'Photo removed',
+  photo_hint: 'JPEG, PNG or WebP, up to 5 MB',
+  auto_checkout_title: 'Automatic check-out when leaving',
+  auto_checkout_hint: 'While an employee is checked in, the mobile app watches their location. When they clearly leave all of their assigned locations they are checked out at that moment, and can check in again when they return (the time away is recorded and not counted as worked time).',
 }
 
 export type TKey = keyof typeof en

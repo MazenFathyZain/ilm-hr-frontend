@@ -55,11 +55,11 @@ function DailyBoard({ onEdit }: { onEdit: (t: EditTarget) => void }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td><Person name={r.name} sub={r.job_title} /></td>
+                  <td><Person name={r.name} avatar={r.avatar_url} sub={r.job_title} /></td>
                   <td>{r.team_name ?? '—'}</td>
                   <td><StatusBadge status={r.status} label={boardLabel(r.status)} /></td>
                   <td className="num">{r.record?.check_in_time ?? '—'}<div className="muted small">{r.record?.check_in_location}</div></td>
-                  <td className="num">{r.record?.check_out_time ?? '—'}<div className="muted small">{r.record?.check_out_location}</div></td>
+                  <td className="num">{r.record?.check_out_time ?? '—'}<div className="muted small">{r.record?.check_out_location}</div>{r.record && <LeftBadge rec={r.record} />}</td>
                   <td>{r.record?.late_minutes ? <Badge tone="amber">{fmtMinutes(r.record.late_minutes)}</Badge> : '—'}</td>
                   <td>{fmtMinutes(r.record?.worked_minutes)}</td>
                   {isManager && (
@@ -121,9 +121,9 @@ function Records({ onEdit }: { onEdit: (t: EditTarget) => void }) {
               {data.map((r) => (
                 <tr key={r.id}>
                   <td>{fmtDate(r.work_date)}</td>
-                  <td><Person name={r.user_name} sub={r.team_name} /></td>
+                  <td><Person name={r.user_name} avatar={r.user_avatar_url} sub={r.team_name} /></td>
                   <td className="num">{r.check_in_time ?? '—'}<div className="muted small">{r.check_in_location}</div></td>
-                  <td className="num">{r.check_out_time ?? '—'}<div className="muted small">{r.check_out_location}</div></td>
+                  <td className="num">{r.check_out_time ?? '—'}<div className="muted small">{r.check_out_location}</div><LeftBadge rec={r} /></td>
                   <td>{r.late_minutes ? <Badge tone="amber">{fmtMinutes(r.late_minutes)}</Badge> : '—'}</td>
                   <td>{fmtMinutes(r.worked_minutes)}</td>
                   <td className="small">{r.note}{r.edited_by ? <span className="muted"> ({t('edited')})</span> : null}</td>
@@ -184,5 +184,17 @@ function EditModal({ target, onClose, onSaved }: { target: EditTarget; onClose: 
         <Field label={t('note')} wide><input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={t('note_placeholder')} /></Field>
       </div>
     </Modal>
+  )
+}
+
+/** Marks records closed automatically because the employee left, and time spent away. */
+function LeftBadge({ rec }: { rec: AttendanceRecord }) {
+  const { t } = useI18n()
+  if (!rec.left_location && !rec.away_minutes) return null
+  return (
+    <div className="left-badge">
+      {rec.left_location && <Badge tone="amber">{t('left_location')}</Badge>}
+      {rec.away_minutes > 0 && <span className="muted small"> {t('away_n', { time: fmtMinutes(rec.away_minutes) })}</span>}
+    </div>
   )
 }

@@ -57,6 +57,14 @@ function SettingsForm({ initial }: { initial: Settings }) {
             <Field label={t('work_ends')}><input type="time" value={form.work_end} onChange={(e) => setForm({ ...form, work_end: e.target.value })} /></Field>
             <Field label={t('grace')} hint={t('grace_hint')}><input type="number" min={0} value={form.late_grace_minutes} onChange={(e) => setForm({ ...form, late_grace_minutes: Number(e.target.value) })} /></Field>
             <Field label={t('currency')}><input dir="ltr" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></Field>
+            <label className="switch-row field-wide">
+              <input type="checkbox" checked={form.auto_checkout_on_leave ?? true}
+                onChange={(e) => setForm({ ...form, auto_checkout_on_leave: e.target.checked })} />
+              <span>
+                <strong>{t('auto_checkout_title')}</strong>
+                <span className="field-hint" style={{ display: 'block' }}>{t('auto_checkout_hint')}</span>
+              </span>
+            </label>
             <fieldset className="field-wide plain-fieldset">
               <legend className="field-label">{t('weekend_days')}</legend>
               <div className="chips">

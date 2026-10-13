@@ -76,7 +76,7 @@ function TeamCard({ team, canEdit, onEdit, onDelete }: { team: Team; canEdit: bo
         {data?.members?.map((m) => (
           <li key={m.id} className="list-row">
             <Link to={`/employees/${m.id}`} className="person plain-link">
-              <Avatar name={m.name} size={30} />
+              <Avatar name={m.name} src={m.avatar_url} size={30} />
               <span className="person-text"><strong>{m.name}</strong><span className="muted small">{m.job_title}</span></span>
             </Link>
             {m.id === team.leader_id ? <Badge tone="gold">{t('leader')}</Badge> : !m.is_active ? <Badge tone="red">{t('inactive')}</Badge> : null}
@@ -143,7 +143,7 @@ function TeamForm({ team, onClose, onSaved }: { team: Team | null; onClose: () =
           {users.loading || (team && current.loading) ? <Loading /> : visible.map((u) => (
             <label key={u.id} className="picker-option">
               <input type="checkbox" checked={members.includes(u.id)} onChange={() => toggle(u.id)} />
-              <Avatar name={u.name} size={26} />
+              <Avatar name={u.name} src={u.avatar_url} size={26} />
               <span>
                 <strong>{u.name}</strong>
                 <span className="muted small"> · {u.job_title ?? roleLabel(u.role)}{u.team_name && u.team_id !== team?.id ? ` · ${t('currently_in', { team: u.team_name })}` : ''}</span>
