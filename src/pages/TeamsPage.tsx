@@ -24,7 +24,7 @@ export function TeamsPage() {
       toast(t('team_deleted'))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     }
   }
 
@@ -35,7 +35,7 @@ export function TeamsPage() {
         subtitle={t('teams_subtitle')}
         actions={isManager && <Button icon="plus" onClick={() => setEditing('new')}>{t('new_team')}</Button>}
       />
-      {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? (
+      {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? (
         <Card><Empty icon="team">{isManager ? t('no_teams') : t('not_leading')}</Empty></Card>
       ) : (
         <div className="cards-grid">
@@ -99,6 +99,7 @@ function TeamForm({ team, onClose, onSaved }: { team: Team | null; onClose: () =
   const [memberIds, setMemberIds] = useState<number[] | null>(team ? null : [])
   const [filter, setFilter] = useState('')
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
 
   const members = memberIds ?? current.data?.members?.map((m) => m.id) ?? []
   const toggle = (id: number) => setMemberIds(members.includes(id) ? members.filter((x) => x !== id) : [...members, id])
@@ -107,6 +108,7 @@ function TeamForm({ team, onClose, onSaved }: { team: Team | null; onClose: () =
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
+    setFormError(null)
     const body = { name, description, leader_id: leaderId ? Number(leaderId) : null, member_ids: members }
     try {
       if (team) await api.patch(`/teams/${team.id}`, body)
@@ -114,7 +116,7 @@ function TeamForm({ team, onClose, onSaved }: { team: Team | null; onClose: () =
       toast(team ? t('team_updated') : t('team_created'))
       onSaved()
     } catch (err) {
-      toast((err as Error).message, 'error')
+      setFormError(err)
     } finally {
       setBusy(false)
     }
@@ -122,13 +124,13 @@ function TeamForm({ team, onClose, onSaved }: { team: Team | null; onClose: () =
 
   const visible = users.data?.filter((u) => !filter || u.name.toLowerCase().includes(filter.toLowerCase())) ?? []
   return (
-    <Modal wide title={team ? t('edit_team', { name: team.name }) : t('new_team')} onClose={onClose} footer={
+    <Modal wide title={team ? t('edit_team', { name: team.name }) : t('new_team')} onClose={onClose} error={formError} footer={
       <>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button type="submit" form="team-form" icon="check" loading={busy}>{t('save')}</Button>
       </>
     }>
-      <form id="team-form" className="form-grid" onSubmit={submit}>
+      <form id="team-form" className="form-grid" onSubmit={submit} onChange={() => setFormError(null)}>
         <Field label={`${t('team_name')} *`}><input required value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label={t('team_leader')} hint={leader?.role === 'employee' ? t('will_promote', { name: leader.name }) : undefined}>
           <select value={leaderId} onChange={(e) => setLeaderId(e.target.value)}>

@@ -23,7 +23,7 @@ export function LocationsPage() {
       toast(t('location_deleted'))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     }
   }
 
@@ -34,7 +34,7 @@ export function LocationsPage() {
         subtitle={t('loc_subtitle')}
         actions={isManager && <Button icon="plus" onClick={() => setEditing('new')}>{t('add_location')}</Button>}
       />
-      {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : (
+      {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : (
         <div className="locations-layout">
           <Card className="map-card"><LocationMap points={data ?? []} height={460} /></Card>
           <div className="location-list">
@@ -91,18 +91,19 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
   })
   const [userIds, setUserIds] = useState<number[] | null>(location ? null : [])
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
   const [locating, setLocating] = useState(false)
   const assigned = userIds ?? detail.data?.users?.map((u) => u.id) ?? []
 
-  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
+  const set = (patch: Partial<typeof form>) => { setFormError(null); setForm((f) => ({ ...f, ...patch })) }
   const pick = (lat: number, lng: number) => set({ latitude: lat.toFixed(6), longitude: lng.toFixed(6) })
 
   function useMyPosition() {
-    if (!navigator.geolocation) return toast(t('geo_unavailable'), 'error')
+    if (!navigator.geolocation) return toast.warning(t('geo_unavailable'))
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (p) => { pick(p.coords.latitude, p.coords.longitude); setLocating(false) },
-      (e) => { toast(e.message, 'error'); setLocating(false) },
+      (e) => { toast.error(e); setLocating(false) },
       { enableHighAccuracy: true, timeout: 15000 },
     )
   }
@@ -110,6 +111,7 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
+    setFormError(null)
     const body = { ...form, latitude: Number(form.latitude), longitude: Number(form.longitude), radius_meters: Number(form.radius_meters), user_ids: assigned }
     try {
       if (location) await api.patch(`/locations/${location.id}`, body)
@@ -117,7 +119,7 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
       toast(location ? t('location_updated') : t('location_created'))
       onSaved()
     } catch (err) {
-      toast((err as Error).message, 'error')
+      setFormError(err)
     } finally {
       setBusy(false)
     }
@@ -128,7 +130,7 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
   const hasPoint = form.latitude !== '' && form.longitude !== '' && Number.isFinite(lat) && Number.isFinite(lng)
 
   return (
-    <Modal wide title={location ? t('edit_location', { name: location.name }) : t('add_location')} onClose={onClose} footer={
+    <Modal wide title={location ? t('edit_location', { name: location.name }) : t('add_location')} onClose={onClose} error={formError} footer={
       <>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button type="submit" form="location-form" icon="check" loading={busy} disabled={!hasPoint}>{t('save')}</Button>
@@ -141,7 +143,7 @@ function LocationForm({ location, others, onClose, onSaved }: { location: Locati
         editing={{ id: location?.id, name: form.name, latitude: hasPoint ? lat : NaN, longitude: hasPoint ? lng : NaN, radius_meters: Number(form.radius_meters) || 0 }}
         onPick={pick}
       />
-      <form id="location-form" className="form-grid" onSubmit={submit}>
+      <form id="location-form" className="form-grid" onSubmit={submit} onChange={() => setFormError(null)}>
         <Field label={`${t('name')} *`}><input required value={form.name} onChange={(e) => set({ name: e.target.value })} /></Field>
         <Field label={t('address')}><input value={form.address} onChange={(e) => set({ address: e.target.value })} /></Field>
         <Field label={`${t('latitude')} *`}><input required dir="ltr" inputMode="decimal" value={form.latitude} onChange={(e) => set({ latitude: e.target.value })} /></Field>

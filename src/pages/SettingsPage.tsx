@@ -11,7 +11,7 @@ import { useApi } from '../lib/useApi'
 export function SettingsPage() {
   const { data, error, loading, reload } = useApi(() => api.get<Settings>('/settings'))
   if (loading && !data) return <Loading />
-  if (error) return <ErrorBox message={error} onRetry={reload} />
+  if (error) return <ErrorBox error={error} onRetry={reload} />
   return data && <SettingsForm initial={data} />
 }
 
@@ -22,17 +22,20 @@ function SettingsForm({ initial }: { initial: Settings }) {
   const [form, setForm] = useState(initial)
   const [docs, setDocs] = useState(initial.required_documents.join('\n'))
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
   const [holiday, setHoliday] = useState({ date: '', name: '' })
 
   async function save(e: FormEvent) {
     e.preventDefault()
+    setFormError(null)
+    if (form.work_end <= form.work_start) return setFormError(new Error(t('end_after_start')))
     setBusy(true)
     try {
       const saved = await api.patch<Settings>('/settings', { ...form, required_documents: docs.split('\n').map((d) => d.trim()).filter(Boolean) })
       setForm(saved)
       toast(t('settings_saved'))
     } catch (err) {
-      toast((err as Error).message, 'error')
+      setFormError(err)
     } finally {
       setBusy(false)
     }
@@ -40,7 +43,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
 
   async function addHoliday(e: FormEvent) {
     e.preventDefault()
-    await api.put('/holidays', holiday).then(() => { setHoliday({ date: '', name: '' }); holidays.reload() }, (err) => toast(err.message, 'error'))
+    await api.put('/holidays', holiday).then(() => { setHoliday({ date: '', name: '' }); holidays.reload() }, (err) => toast.error(err))
   }
 
   const toggleDay = (d: number) => setForm({ ...form, weekend_days: form.weekend_days.includes(d) ? form.weekend_days.filter((x) => x !== d) : [...form.weekend_days, d] })
@@ -48,8 +51,9 @@ function SettingsForm({ initial }: { initial: Settings }) {
   return (
     <>
       <PageHeader title={t('set_title')} subtitle={t('set_subtitle')} />
-      <form onSubmit={save}>
+      <form onSubmit={save} onChange={() => setFormError(null)}>
         <Card title={t('company_hours')} icon="clock" actions={<Button type="submit" icon="check" loading={busy}>{t('save_settings')}</Button>}>
+          <ErrorBox compact error={formError} />
           <div className="form-grid">
             <Field label={t('company_name')}><input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></Field>
             <Field label={t('timezone')} hint={t('tz_hint')}><input dir="ltr" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} /></Field>
@@ -97,7 +101,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
           {holidays.data?.map((h) => (
             <li key={h.date} className="list-row">
               <span className="person"><span className="team-emblem small"><Icon name="calendar" size={15} /></span><span className="person-text"><strong>{h.name}</strong><span className="muted small">{fmtLongDate(h.date)}</span></span></span>
-              <Button size="sm" variant="ghost" onClick={() => api.del(`/holidays/${h.date}`).then(holidays.reload)}>{t('remove')}</Button>
+              <Button size="sm" variant="ghost" onClick={() => api.del(`/holidays/${h.date}`).then(holidays.reload, toast.error)}>{t('remove')}</Button>
             </li>
           ))}
         </ul>

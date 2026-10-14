@@ -16,6 +16,9 @@ export const boardLabel = (s: string) => tr(`st_${s}` as TKey)
 export const earningLabel = (k: string) => tr(`e_${k}` as TKey)
 export const deductionLabel = (k: string) => tr(`d_${k}` as TKey)
 export const weekdayLabel = (d: number) => tr(`wd_${d}` as TKey)
+/** "Friday and Saturday" / "الجمعة والسبت"; empty string when there are none. */
+export const fmtDaysOff = (days: number[]) =>
+  new Intl.ListFormat(intlLocale(), { style: 'long', type: 'conjunction' }).format([...days].sort((a, b) => a - b).map(weekdayLabel))
 
 /** Label for request / payslip / document statuses. */
 export function statusLabel(kind: 'request' | 'payslip' | 'document', status: string) {

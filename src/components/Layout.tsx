@@ -5,7 +5,9 @@ import { useI18n } from '../i18n/I18nContext'
 import type { TKey } from '../i18n/en'
 import { roleLabel } from '../lib/format'
 import { useTheme, type ThemeMode } from '../theme/ThemeContext'
+import { ErrorBoundary } from './ErrorBoundary'
 import { Icon, type IconName } from './Icon'
+import { OfflineBanner } from './OfflineBanner'
 import { Avatar, Seal } from './ui'
 
 interface NavItem { to: string; label: TKey; icon: IconName; end?: boolean; managerOnly?: boolean }
@@ -83,14 +85,19 @@ export function Layout() {
       </aside>
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
       <div className="main">
-        <header className="topbar">
-          <button className="icon-btn menu-btn" onClick={() => setOpen(true)} aria-label={t('menu')}><Icon name="menu" size={20} /></button>
-          {!isManager && <span className="scope-pill"><Icon name="team" size={14} />{t('scope_team_only')}</span>}
-          <span className="spacer" />
-          <Preferences />
-        </header>
+        <div className="topbar-wrap">
+          <OfflineBanner />
+          <header className="topbar">
+            <button className="icon-btn menu-btn" onClick={() => setOpen(true)} aria-label={t('menu')}><Icon name="menu" size={20} /></button>
+            {!isManager && <span className="scope-pill"><Icon name="team" size={14} />{t('scope_team_only')}</span>}
+            <span className="spacer" />
+            <Preferences />
+          </header>
+        </div>
         <main className="content">
-          <Outlet />
+          <ErrorBoundary key={pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

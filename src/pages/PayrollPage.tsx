@@ -32,7 +32,7 @@ export function PayrollPage() {
       toast(action === 'generate' ? t('drafts_created', { n: res.created ?? 0 }) : t('published_n', { n: res.published ?? 0 }))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     } finally {
       setBusy(false)
     }
@@ -60,7 +60,7 @@ export function PayrollPage() {
           <div className="total-chip"><span className="muted small">{t('total_net')}</span><strong>{fmtMoney(total, cur)}</strong></div>
           <Button variant="secondary" icon="plus" onClick={() => setEditing({ userId: null, payslip: null })}>{t('single_payslip')}</Button>
         </div>
-        {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? (
+        {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? (
           <Empty icon="wallet">{t('no_payslips')}</Empty>
         ) : (
           <div className="table-wrap">
@@ -101,9 +101,11 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
   const [deductions, setDeductions] = useState<Record<string, number>>(payslip?.deductions ?? Object.fromEntries(DEDUCTION_KEYS.map((k) => [k, 0])))
   const [basis, setBasis] = useState<Suggestion['basis'] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
 
   async function suggest(forUser = uid) {
     if (!forUser) return
+    setFormError(null)
     try {
       const s = await api.get<Suggestion>('/payslips/suggest', { user_id: forUser, month })
       setBasic(s.basic_salary)
@@ -112,18 +114,19 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
       setDeductions((d) => ({ ...d, absence: s.deductions.absence, penalties: s.deductions.penalties }))
       setBasis(s.basis)
     } catch (e) {
-      toast((e as Error).message, 'error')
+      setFormError(e)
     }
   }
 
   async function save(status: 'draft' | 'published') {
     setBusy(true)
+    setFormError(null)
     try {
       await api.put('/payslips', { user_id: Number(uid), month, basic_salary: basic, earnings, deductions, status })
       toast(status === 'published' ? t('payslip_published') : t('draft_saved'))
       onSaved()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      setFormError(e)
     } finally {
       setBusy(false)
     }
@@ -131,7 +134,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
 
   async function remove() {
     if (!payslip || !confirm(t('confirm_delete_payslip'))) return
-    await api.del(`/payslips/${payslip.id}`).then(onSaved, (e) => toast(e.message, 'error'))
+    await api.del(`/payslips/${payslip.id}`).then(onSaved, setFormError)
   }
 
   const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + (Number(b) || 0), 0)
@@ -139,7 +142,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
   const name = payslip?.user_name ?? users.data?.find((u) => String(u.id) === uid)?.name
 
   return (
-    <Modal wide title={name ? t('payslip_title', { name, month: fmtMonth(month) }) : t('new_payslip', { month: fmtMonth(month) })} onClose={onClose} footer={
+    <Modal wide title={name ? t('payslip_title', { name, month: fmtMonth(month) }) : t('new_payslip', { month: fmtMonth(month) })} onClose={onClose} error={formError} footer={
       <>
         {payslip && <Button variant="danger" onClick={remove}>{t('delete')}</Button>}
         <span className="spacer" />
@@ -147,6 +150,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
         <Button icon="check" loading={busy} disabled={!uid} onClick={() => save('published')}>{payslip?.status === 'published' ? t('save') : t('save_publish')}</Button>
       </>
     }>
+      <div onChange={() => setFormError(null)}>
       <div className="form-grid">
         {!payslip && (
           <Field label={t('employee')}>
@@ -170,6 +174,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
       <div className="grid-2">
         <LineItems title={t('earnings')} keys={EARNING_KEYS} label={earningLabel} values={earnings} onChange={setEarnings} tone="green" />
         <LineItems title={t('deductions')} keys={DEDUCTION_KEYS} label={deductionLabel} values={deductions} onChange={setDeductions} tone="red" />
+      </div>
       </div>
       <div className="net-row">{t('net_salary')} <strong>{fmtMoney(Math.round(net * 100) / 100, currency)}</strong></div>
     </Modal>

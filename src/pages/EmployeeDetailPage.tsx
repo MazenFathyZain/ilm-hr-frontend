@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon'
 import { useToast } from '../components/Toast'
 import { Avatar, Badge, Button, Card, Empty, ErrorBox, Field, Loading, Stat, StatusBadge } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
-import { fmtDate, fmtMinutes, fmtMoney, requestSummary, requestTypeLabel, roleLabel, roleTone, thisMonth } from '../lib/format'
+import { fmtDate, fmtDaysOff, fmtMinutes, fmtMoney, requestSummary, requestTypeLabel, roleLabel, roleTone, thisMonth } from '../lib/format'
 import { useApi } from '../lib/useApi'
 import { EmployeeForm } from './EmployeesPage'
 
@@ -27,7 +27,7 @@ export function EmployeeDetailPage() {
   const reqs = useApi(() => api.get<HrRequest[]>('/requests', { user_id: id }), [id])
 
   if (loading && !u) return <Loading />
-  if (error) return <ErrorBox message={error} onRetry={reload} />
+  if (error) return <ErrorBox error={error} onRetry={reload} />
   if (!u) return null
 
   async function toggleActive() {
@@ -38,7 +38,7 @@ export function EmployeeDetailPage() {
       toast(u.is_active ? t('employee_deactivated') : t('employee_reactivated'))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     }
   }
 
@@ -50,7 +50,7 @@ export function EmployeeDetailPage() {
       toast(t('photo_updated'))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     } finally {
       setPhotoBusy(false)
       if (fileInput.current) fileInput.current.value = ''
@@ -64,7 +64,7 @@ export function EmployeeDetailPage() {
       toast(t('photo_removed'))
       reload()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      toast.error(e)
     }
   }
 
@@ -112,6 +112,15 @@ export function EmployeeDetailPage() {
             <dt>{t('team')}</dt><dd>{u.team_name ?? '—'}</dd>
             <dt>{t('reports_to')}</dt><dd>{u.supervisor_id && u.supervisor_id !== u.id ? u.supervisor_name : '—'}</dd>
             <dt>{t('hire_date')}</dt><dd>{fmtDate(u.hire_date)}</dd>
+            {u.schedule && <>
+              <dt>{t('working_hours')}</dt>
+              <dd className="schedule-dd">
+                <span className="num" dir="ltr">{u.schedule.work_start}–{u.schedule.work_end}</span>
+                <Badge tone={u.schedule.custom ? 'blue' : 'gray'}>{u.schedule.custom ? t('schedule_custom') : t('schedule_company')}</Badge>
+                <div className="muted small">{t('grace_n', { n: u.schedule.late_grace_minutes })}</div>
+              </dd>
+              <dt>{t('days_off')}</dt><dd>{fmtDaysOff(u.schedule.weekend_days) || t('no_days_off')}</dd>
+            </>}
             {u.basic_salary !== undefined && <><dt>{t('basic_salary')}</dt><dd>{fmtMoney(u.basic_salary)}</dd></>}
             <dt>{t('checkin_locations')}</dt>
             <dd>{u.locations.length

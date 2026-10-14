@@ -1,6 +1,7 @@
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { fileUrl } from '../api/client'
+import { errorKind, errorMessage, fileUrl, type ErrorKind } from '../api/client'
 import logo from '../assets/logo.png'
+import type { TKey } from '../i18n/en'
 import { useI18n } from '../i18n/I18nContext'
 import { STATUS_TONE, initials, statusLabel } from '../lib/format'
 import { Icon, type IconName } from './Icon'
@@ -101,7 +102,8 @@ export function Field({ label, hint, children, wide }: { label: string; hint?: s
   )
 }
 
-export function Modal({ title, onClose, children, footer, wide }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+/** `error` (e.g. the last failed submit) is shown just above the footer so it stays visible while the body scrolls. */
+export function Modal({ title, onClose, children, footer, wide, error }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; error?: unknown }) {
   const { t } = useI18n()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -116,6 +118,7 @@ export function Modal({ title, onClose, children, footer, wide }: { title: strin
           <button className="icon-btn" onClick={onClose} aria-label={t('close')}><Icon name="x" /></button>
         </header>
         <div className="modal-body">{children}</div>
+        {error != null && <div className="modal-error"><ErrorBox compact error={error} /></div>}
         {footer && <footer className="modal-footer">{footer}</footer>}
       </div>
     </div>
@@ -127,13 +130,36 @@ export function Loading() {
   return <div className="center-pad"><span className="spinner" aria-label={t('loading')} /></div>
 }
 
-export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
+const ERROR_LOOK: Record<ErrorKind, { icon: IconName; title: TKey }> = {
+  network: { icon: 'wifiOff', title: 'err_title_network' },
+  server: { icon: 'server', title: 'err_title_server' },
+  forbidden: { icon: 'lock', title: 'err_title_forbidden' },
+  not_found: { icon: 'fileQuestion', title: 'err_title_not_found' },
+  validation: { icon: 'alert', title: 'err_title_validation' },
+  generic: { icon: 'triangle', title: 'err_title_generic' },
+}
+
+/**
+ * Inline error panel. Pass the thrown `error` (ApiError/Error) to get a matching icon, title and
+ * message, or a plain `message`. `compact` is the smaller variant used inside modals and forms.
+ */
+export function ErrorBox({ error, message, title, onRetry, compact, className = '' }: {
+  error?: unknown; message?: string; title?: string; onRetry?: () => void; compact?: boolean; className?: string
+}) {
   const { t } = useI18n()
+  if (error == null && !message) return null
+  const kind = error != null ? errorKind(error) : 'generic'
+  const look = ERROR_LOOK[kind]
+  const text = message ?? errorMessage(error)
   return (
-    <div className="error-box" role="alert">
-      <Icon name="alert" />
-      <span className="spacer">{message}</span>
-      {onRetry && <Button variant="secondary" size="sm" onClick={onRetry}>{t('retry')}</Button>}
+    <div className={`error-box error-${kind} ${compact ? 'error-box-compact' : ''} ${className}`} role="alert">
+      <span className="error-box-icon"><Icon name={look.icon} size={compact ? 16 : 20} /></span>
+      <div className="error-box-text">
+        {/* Compact form errors are usually self-explanatory; only add a title for connectivity / server problems. */}
+        {(!compact || (kind !== 'validation' && kind !== 'generic')) && <strong className="error-box-title">{title ?? t(look.title)}</strong>}
+        <span className="error-box-message">{text}</span>
+      </div>
+      {onRetry && <Button variant="secondary" size="sm" icon="refresh" onClick={onRetry}>{t('retry')}</Button>}
     </div>
   )
 }

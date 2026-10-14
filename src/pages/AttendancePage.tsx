@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, download } from '../api/client'
-import type { AttendanceRecord, Board, BoardStatus, Team, User } from '../api/types'
+import type { AttendanceRecord, Board, BoardRow, BoardStatus, Team, User } from '../api/types'
+import { Icon } from '../components/Icon'
 import { useAuth } from '../auth/AuthContext'
 import { useToast } from '../components/Toast'
 import { Badge, Button, Card, Empty, ErrorBox, Field, Loading, Modal, PageHeader, Person, StatusBadge, Tabs } from '../components/ui'
@@ -33,6 +34,9 @@ function DailyBoard({ onEdit }: { onEdit: (t: EditTarget) => void }) {
   const { data, error, loading, reload } = useApi(() => api.get<Board>('/attendance/board', { date }), [date])
 
   const rows = data?.rows.filter((r) => !filter || r.status === filter) ?? []
+  // Highlight hours that differ from what most people work that day (e.g. a later shift).
+  const usual = mostCommon(data?.rows.map((r) => `${r.work_start}–${r.work_end}`) ?? [])
+  const isUnusual = (r: BoardRow) => `${r.work_start}–${r.work_end}` !== usual
   return (
     <Card>
       <div className="toolbar">
@@ -46,16 +50,19 @@ function DailyBoard({ onEdit }: { onEdit: (t: EditTarget) => void }) {
           ))}
         </div>
       </div>
-      {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : rows.length === 0 ? <Empty icon="users">{t('no_employees_match')}</Empty> : (
+      {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : rows.length === 0 ? <Empty icon="users">{t('no_employees_match')}</Empty> : (
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>{t('employee')}</th><th>{t('team')}</th><th>{t('status')}</th><th>{t('check_in')}</th><th>{t('check_out')}</th><th>{t('late')}</th><th>{t('worked')}</th>{isManager && <th />}</tr>
+              <tr><th>{t('employee')}</th><th>{t('shift')}</th><th>{t('team')}</th><th>{t('status')}</th><th>{t('check_in')}</th><th>{t('check_out')}</th><th>{t('late')}</th><th>{t('worked')}</th>{isManager && <th />}</tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td><Person name={r.name} avatar={r.avatar_url} sub={r.job_title} /></td>
+                  <td className="shift-cell">{r.work_start && r.work_end
+                    ? <span className={`shift ${isUnusual(r) ? 'shift-custom' : ''}`} dir="ltr"><Icon name="clock" size={12} />{r.work_start}–{r.work_end}</span>
+                    : '—'}</td>
                   <td>{r.team_name ?? '—'}</td>
                   <td><StatusBadge status={r.status} label={boardLabel(r.status)} /></td>
                   <td className="num">{r.record?.check_in_time ?? '—'}<div className="muted small">{r.record?.check_in_location}</div></td>
@@ -109,9 +116,9 @@ function Records({ onEdit }: { onEdit: (t: EditTarget) => void }) {
           </select>
         </Field>
         <label className="check"><input type="checkbox" checked={q.late_only} onChange={(e) => setQ({ ...q, late_only: e.target.checked })} /> {t('late_only')}</label>
-        <Button variant="secondary" icon="download" onClick={() => download('/attendance/export', query, 'attendance.csv').catch((e) => toast(e.message, 'error'))}>{t('export_csv')}</Button>
+        <Button variant="secondary" icon="download" onClick={() => download('/attendance/export', query, 'attendance.csv').catch((e) => toast.error(e))}>{t('export_csv')}</Button>
       </div>
-      {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? <Empty icon="calendar">{t('no_records')}</Empty> : (
+      {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? <Empty icon="calendar">{t('no_records')}</Empty> : (
         <div className="table-wrap">
           <table>
             <thead>
@@ -150,9 +157,11 @@ function EditModal({ target, onClose, onSaved }: { target: EditTarget; onClose: 
   const { t } = useI18n()
   const [form, setForm] = useState(target)
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
 
   async function save(clear = false) {
     setBusy(true)
+    setFormError(null)
     try {
       await api.put('/attendance', clear
         ? { user_id: form.user_id, work_date: form.work_date }
@@ -160,14 +169,14 @@ function EditModal({ target, onClose, onSaved }: { target: EditTarget; onClose: 
       toast(clear ? t('record_removed') : t('attendance_saved'))
       onSaved()
     } catch (e) {
-      toast((e as Error).message, 'error')
+      setFormError(e)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Modal title={t('correct_attendance', { name: target.name })} onClose={onClose} footer={
+    <Modal title={t('correct_attendance', { name: target.name })} onClose={onClose} error={formError} footer={
       <>
         {target.check_in_time && <Button variant="danger" onClick={() => save(true)} loading={busy}>{t('remove_record')}</Button>}
         <span className="spacer" />
@@ -176,7 +185,7 @@ function EditModal({ target, onClose, onSaved }: { target: EditTarget; onClose: 
       </>
     }>
       <p className="muted small">{t('manual_note_hint')}</p>
-      <div className="form-grid">
+      <div className="form-grid" onChange={() => setFormError(null)}>
         <Field label={t('date')}><input type="date" value={form.work_date} onChange={(e) => setForm({ ...form, work_date: e.target.value })} /></Field>
         <span />
         <Field label={t('check_in_time')}><input type="time" value={form.check_in_time} onChange={(e) => setForm({ ...form, check_in_time: e.target.value })} /></Field>
@@ -197,4 +206,10 @@ function LeftBadge({ rec }: { rec: AttendanceRecord }) {
       {rec.away_minutes > 0 && <span className="muted small"> {t('away_n', { time: fmtMinutes(rec.away_minutes) })}</span>}
     </div>
   )
+}
+
+function mostCommon(values: string[]) {
+  const counts = new Map<string, number>()
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1)
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0]
 }

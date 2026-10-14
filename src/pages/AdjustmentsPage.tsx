@@ -19,7 +19,7 @@ export function AdjustmentsPage() {
 
   async function remove(a: Adjustment) {
     if (!confirm(t('confirm_delete_entry'))) return
-    await api.del(`/adjustments/${a.id}`).then(() => { toast(t('deleted')); reload() }, (e) => toast(e.message, 'error'))
+    await api.del(`/adjustments/${a.id}`).then(() => { toast(t('deleted')); reload() }, (e) => toast.error(e))
   }
 
   return (
@@ -39,7 +39,7 @@ export function AdjustmentsPage() {
             </select>
           </Field>
         </div>
-        {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? <Empty icon="award">{t('nothing_recorded')}</Empty> : (
+        {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? <Empty icon="award">{t('nothing_recorded')}</Empty> : (
           <div className="table-wrap">
             <table>
               <thead><tr><th>{t('date')}</th><th>{t('employee')}</th><th>{t('type')}</th><th>{t('reason')}</th><th className="end">{t('amount')}</th><th>{t('by')}</th><th /></tr></thead>
@@ -70,24 +70,26 @@ function AdjustmentForm({ users, onClose, onSaved }: { users: User[]; onClose: (
   const { t } = useI18n()
   const [form, setForm] = useState({ user_id: '', kind: 'reward', amount: '', reason: '', date: today() })
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
+    setFormError(null)
     try {
       await api.post('/adjustments', { ...form, user_id: Number(form.user_id), amount: Number(form.amount || 0) })
       toast(t('saved_notified'))
       onSaved()
     } catch (err) {
-      toast((err as Error).message, 'error')
+      setFormError(err)
     } finally {
       setBusy(false)
     }
   }
   return (
-    <Modal title={t('add_adj_title')} onClose={onClose} footer={
+    <Modal title={t('add_adj_title')} onClose={onClose} error={formError} footer={
       <><Button variant="secondary" onClick={onClose}>{t('cancel')}</Button><Button type="submit" form="adj-form" icon="check" loading={busy}>{t('save')}</Button></>
     }>
-      <form id="adj-form" className="form-grid" onSubmit={submit}>
+      <form id="adj-form" className="form-grid" onSubmit={submit} onChange={() => setFormError(null)}>
         <Field label={`${t('employee')} *`}>
           <select required value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })}>
             <option value="">{t('select')}</option>

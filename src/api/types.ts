@@ -2,6 +2,19 @@ export type Role = 'manager' | 'team_leader' | 'employee'
 
 export interface LocationRef { id: number; name: string }
 
+/** Working hours as 'HH:MM'; weekend_days uses 0 = Sunday … 6 = Saturday. */
+export interface ScheduleValues {
+  work_start: string
+  work_end: string
+  late_grace_minutes: number
+  weekend_days: number[]
+}
+/** Effective schedule of an employee; `own` holds their overrides (null = company default). */
+export interface UserSchedule extends ScheduleValues {
+  custom: boolean
+  own: { [K in keyof ScheduleValues]: ScheduleValues[K] | null }
+}
+
 export interface User {
   id: number
   employee_code: string | null
@@ -24,6 +37,7 @@ export interface User {
   created_at: string
   avatar_url: string | null
   locations: LocationRef[]
+  schedule?: UserSchedule
 }
 
 export interface LeaveBucket { total: number; used: number; pending: number; remaining: number }
@@ -91,6 +105,9 @@ export interface BoardRow {
   team_name: string | null
   status: BoardStatus
   record: AttendanceRecord | null
+  /** This employee's effective working hours for the day. */
+  work_start?: string
+  work_end?: string
 }
 export interface Board { date: string; is_working_day: boolean; counts: Partial<Record<BoardStatus, number>>; rows: BoardRow[] }
 

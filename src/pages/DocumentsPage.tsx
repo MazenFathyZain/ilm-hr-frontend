@@ -20,12 +20,12 @@ export function DocumentsPage() {
   async function review(d: HrDocument, next: 'approved' | 'rejected') {
     const note = next === 'rejected' ? prompt(t('reject_doc_prompt')) ?? undefined : undefined
     if (next === 'rejected' && note === undefined) return
-    await api.patch(`/documents/${d.id}`, { status: next, note }).then(() => { toast(t('doc_status_changed')); reload() }, (e) => toast(e.message, 'error'))
+    await api.patch(`/documents/${d.id}`, { status: next, note }).then(() => { toast(t('doc_status_changed')); reload() }, (e) => toast.error(e))
   }
 
   async function add() {
     if (!userId || !newTitle.trim()) return
-    await api.post('/documents', { user_id: Number(userId), title: newTitle }).then(() => { setNewTitle(''); toast(t('doc_slot_added')); reload() }, (e) => toast(e.message, 'error'))
+    await api.post('/documents', { user_id: Number(userId), title: newTitle }).then(() => { setNewTitle(''); toast(t('doc_slot_added')); reload() }, (e) => toast.error(e))
   }
 
   return (
@@ -52,7 +52,7 @@ export function DocumentsPage() {
             </>
           )}
         </div>
-        {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? <Empty icon="file">{t('no_documents')}</Empty> : (
+        {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? <Empty icon="file">{t('no_documents')}</Empty> : (
           <div className="table-wrap">
             <table>
               <thead><tr><th>{t('employee')}</th><th>{t('document')}</th><th>{t('status')}</th><th>{t('updated')}</th><th /></tr></thead>
@@ -65,7 +65,7 @@ export function DocumentsPage() {
                     <td className="small nowrap">{fmtDate(d.updated_at)}</td>
                     <td className="end">
                       <div className="row-actions end">
-                        {d.has_file && <Button size="sm" variant="ghost" icon="download" onClick={() => download(`/documents/${d.id}/file`, undefined, d.original_name ?? d.title).catch((e) => toast(e.message, 'error'))}>{t('download')}</Button>}
+                        {d.has_file && <Button size="sm" variant="ghost" icon="download" onClick={() => download(`/documents/${d.id}/file`, undefined, d.original_name ?? d.title).catch((e) => toast.error(e))}>{t('download')}</Button>}
                         {d.status === 'submitted' && (
                           <>
                             <Button size="sm" icon="check" onClick={() => review(d, 'approved')}>{t('approve')}</Button>

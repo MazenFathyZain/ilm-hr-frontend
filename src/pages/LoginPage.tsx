@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { Preferences } from '../components/Layout'
-import { Button, Field, Ornament, Seal } from '../components/ui'
+import { Button, ErrorBox, Field, Ornament, Seal } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
 
 export function LoginPage() {
@@ -9,7 +9,7 @@ export function LoginPage() {
   const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<unknown>(null)
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
@@ -19,7 +19,7 @@ export function LoginPage() {
     try {
       await login(email, password)
     } catch (err) {
-      setError((err as Error).message)
+      setError(err)
     } finally {
       setBusy(false)
     }
@@ -40,12 +40,12 @@ export function LoginPage() {
           <Ornament />
           <p className="muted">{t('login_subtitle')}</p>
           <Field label={t('email')}>
-            <input type="email" dir="ltr" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+            <input type="email" dir="ltr" autoComplete="username" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} required autoFocus />
           </Field>
           <Field label={t('password')}>
-            <input type="password" dir="ltr" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input type="password" dir="ltr" autoComplete="current-password" value={password} onChange={(e) => { setPassword(e.target.value); setError(null) }} required />
           </Field>
-          {error && <div className="error-box" role="alert">{error}</div>}
+          <ErrorBox compact error={error} />
           <Button type="submit" loading={busy} icon="login" className="btn-block btn-lg">{t('sign_in')}</Button>
           <p className="muted small center">{t('login_title')}</p>
         </form>

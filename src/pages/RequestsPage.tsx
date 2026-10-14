@@ -51,7 +51,7 @@ export function RequestsPage() {
           </Field>
         </div>
 
-        {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? <Empty>{t('no_requests')}</Empty> : (
+        {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? <Empty>{t('no_requests')}</Empty> : (
           <div className="table-wrap">
             <table>
               <thead>
@@ -101,23 +101,24 @@ export function RequestsPage() {
 }
 
 function ReviewModal({ request, decision, onClose, onDone }: { request: HrRequest; decision: 'approve' | 'reject'; onClose: () => void; onDone: (m: string) => void }) {
-  const toast = useToast()
   const { t } = useI18n()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
   async function submit() {
     setBusy(true)
+    setFormError(null)
     try {
       await api.patch(`/requests/${request.id}/${decision}`, { note })
       onDone(decision === 'approve' ? t('request_approved') : t('request_rejected'))
     } catch (e) {
-      toast((e as Error).message, 'error')
+      setFormError(e)
       setBusy(false)
     }
   }
   const typeName = requestTypeLabel(request.type)
   return (
-    <Modal title={decision === 'approve' ? t('approve_title', { type: typeName }) : t('reject_title', { type: typeName })} onClose={onClose} footer={
+    <Modal title={decision === 'approve' ? t('approve_title', { type: typeName }) : t('reject_title', { type: typeName })} onClose={onClose} error={formError} footer={
       <>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button variant={decision === 'approve' ? 'primary' : 'danger'} icon={decision === 'approve' ? 'check' : 'x'} loading={busy} onClick={submit}>
@@ -131,7 +132,7 @@ function ReviewModal({ request, decision, onClose, onDone }: { request: HrReques
         {request.reason && <blockquote>{request.reason}</blockquote>}
       </div>
       <Field label={decision === 'reject' ? t('reject_reason_label') : t('approve_note_label')}>
-        <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea rows={3} value={note} onChange={(e) => { setNote(e.target.value); setFormError(null) }} />
       </Field>
     </Modal>
   )

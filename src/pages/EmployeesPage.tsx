@@ -1,13 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Location, Role, Team, User } from '../api/types'
+import type { Location, Role, Settings, Team, User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/Toast'
 import { Badge, Button, Card, Empty, ErrorBox, Field, Loading, Modal, PageHeader, Person, StatusBadge } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
-import { ROLES, roleLabel, roleTone } from '../lib/format'
+import { ROLES, fmtDaysOff, roleLabel, roleTone, weekdayLabel } from '../lib/format'
 import { useApi } from '../lib/useApi'
 
 export function EmployeesPage() {
@@ -60,7 +60,7 @@ export function EmployeesPage() {
             </select>
           </Field>
         </div>
-        {loading && !data ? <Loading /> : error ? <ErrorBox message={error} onRetry={reload} /> : !data?.length ? <Empty icon="users">{t('no_employees')}</Empty> : (
+        {loading && !data ? <Loading /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.length ? <Empty icon="users">{t('no_employees')}</Empty> : (
           <div className="table-wrap">
             <table className="clickable">
               <thead>
@@ -106,7 +106,17 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
   const { t } = useI18n()
   const teams = useApi(() => api.get<Team[]>('/teams'))
   const locations = useApi(() => api.get<Location[]>('/locations'))
+  const settings = useApi(() => api.get<Settings>('/settings'))
   const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState<unknown>(null)
+  const own = user?.schedule?.own
+  const [sched, setSched] = useState<ScheduleState>({
+    useCompany: !user?.schedule?.custom,
+    work_start: own?.work_start ?? '',
+    work_end: own?.work_end ?? '',
+    late_grace_minutes: own?.late_grace_minutes != null ? String(own.late_grace_minutes) : '',
+    weekend_days: own?.weekend_days ?? null,
+  })
   const [form, setForm] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
@@ -126,13 +136,33 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
   })
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
 
+  // Company values: from settings, or (if settings can't be loaded) the employee's current effective schedule.
+  const company: CompanySchedule | null = settings.data ?? (user?.schedule && !user.schedule.custom ? user.schedule : null)
+
   async function submit(e: FormEvent) {
     e.preventDefault()
+    setFormError(null)
+    if (!sched.useCompany) {
+      const start = sched.work_start || company?.work_start
+      const end = sched.work_end || company?.work_end
+      if (start && end && end <= start) return setFormError(new Error(t('end_after_start')))
+    }
     setBusy(true)
     const body: Record<string, unknown> = {
       ...form,
       team_id: form.team_id ? Number(form.team_id) : null,
       basic_salary: form.basic_salary === '' ? 0 : Number(form.basic_salary),
+    }
+    // Own schedule: empty fields (and the whole schedule when "use company schedule" is on) fall back to the company default.
+    if (sched.useCompany) {
+      if (user?.schedule?.custom) Object.assign(body, { work_start: null, work_end: null, late_grace_minutes: null, weekend_days: null })
+    } else {
+      Object.assign(body, {
+        work_start: sched.work_start || null,
+        work_end: sched.work_end || null,
+        late_grace_minutes: sched.late_grace_minutes === '' ? null : Number(sched.late_grace_minutes),
+        weekend_days: sched.weekend_days,
+      })
     }
     // Empty leave balances fall back to the defaults from settings; an empty password keeps the current one.
     for (const k of ['annual_leave_balance', 'casual_leave_balance'] as const) body[k] = form[k] === '' ? undefined : Number(form[k])
@@ -142,7 +172,7 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
       toast(user ? t('employee_updated') : t('employee_created'))
       onSaved(saved)
     } catch (err) {
-      toast((err as Error).message, 'error')
+      setFormError(err)
     } finally {
       setBusy(false)
     }
@@ -152,13 +182,13 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
     set('location_ids', form.location_ids.includes(id) ? form.location_ids.filter((x) => x !== id) : [...form.location_ids, id])
 
   return (
-    <Modal wide title={user ? t('edit_employee', { name: user.name }) : t('add_employee')} onClose={onClose} footer={
+    <Modal wide title={user ? t('edit_employee', { name: user.name }) : t('add_employee')} onClose={onClose} error={formError} footer={
       <>
         <Button variant="secondary" onClick={onClose}>{t('cancel')}</Button>
         <Button type="submit" form="employee-form" icon="check" loading={busy}>{user ? t('save_changes') : t('create_employee')}</Button>
       </>
     }>
-      <form id="employee-form" className="form-grid" onSubmit={submit}>
+      <form id="employee-form" className="form-grid" onSubmit={submit} onChange={() => setFormError(null)}>
         <Field label={`${t('full_name')} *`}><input required value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
         <Field label={`${t('email_login')} *`}><input required type="email" dir="ltr" value={form.email} onChange={(e) => set('email', e.target.value)} /></Field>
         <Field label={user ? t('new_password') : `${t('password')} *`} hint={user ? t('keep_password_hint') : t('password_min_hint')}>
@@ -185,6 +215,8 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
         <Field label={t('annual_leave_days')} hint={user ? undefined : t('defaults_hint')}><input type="number" min={0} value={form.annual_leave_balance} onChange={(e) => set('annual_leave_balance', e.target.value)} /></Field>
         <Field label={t('casual_leave_days')} hint={user ? undefined : t('defaults_hint')}><input type="number" min={0} value={form.casual_leave_balance} onChange={(e) => set('casual_leave_balance', e.target.value)} /></Field>
 
+        <ScheduleFields value={sched} onChange={setSched} company={company} invalidEnd={formError instanceof Error && formError.message === t('end_after_start')} />
+
         <fieldset className="field-wide picker">
           <legend>{t('checkin_locations')} <span className="muted small">— {t('checkin_locations_hint')}</span></legend>
           {locations.loading ? <Loading /> : !locations.data?.length ? (
@@ -199,5 +231,77 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
         </fieldset>
       </form>
     </Modal>
+  )
+}
+
+interface ScheduleState { useCompany: boolean; work_start: string; work_end: string; late_grace_minutes: string; weekend_days: number[] | null }
+type CompanySchedule = Pick<Settings, 'work_start' | 'work_end' | 'late_grace_minutes' | 'weekend_days'>
+
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
+/** Per-employee working hours: "use company schedule" toggle, or own start / end / grace / days off. */
+function ScheduleFields({ value, onChange, company, invalidEnd }: {
+  value: ScheduleState; onChange: (v: ScheduleState) => void; company: CompanySchedule | null; invalidEnd: boolean
+}) {
+  const { t } = useI18n()
+  const set = (patch: Partial<ScheduleState>) => onChange({ ...value, ...patch })
+  const days = value.weekend_days ?? company?.weekend_days ?? []
+
+  function toggleCompany(useCompany: boolean) {
+    // Switching to a custom schedule starts from the company values so only the differences need typing.
+    if (useCompany || !company) return set({ useCompany })
+    set({
+      useCompany,
+      work_start: value.work_start || company.work_start,
+      work_end: value.work_end || company.work_end,
+      late_grace_minutes: value.late_grace_minutes || String(company.late_grace_minutes),
+      weekend_days: value.weekend_days ?? [...company.weekend_days],
+    })
+  }
+  const toggleDay = (d: number) => set({ weekend_days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b) })
+
+  return (
+    <fieldset className="field-wide schedule-fieldset">
+      <legend><Icon name="clock" size={14} /> {t('work_schedule')}</legend>
+      <label className="switch-row">
+        <input type="checkbox" role="switch" checked={value.useCompany} onChange={(e) => toggleCompany(e.target.checked)} />
+        <span>
+          <strong>{t('use_company_schedule')}</strong>
+          <span className="field-hint" style={{ display: 'block' }}>
+            {value.useCompany
+              ? company && t('use_company_schedule_hint', {
+                hours: `${company.work_start}–${company.work_end}`,
+                days: fmtDaysOff(company.weekend_days) || t('no_days_off'),
+              })
+              : t('custom_schedule_hint')}
+          </span>
+        </span>
+      </label>
+      {!value.useCompany && (
+        <div className="form-grid schedule-grid">
+          <Field label={t('work_starts')}>
+            <input type="time" value={value.work_start} placeholder={company?.work_start} onChange={(e) => set({ work_start: e.target.value })} />
+          </Field>
+          <Field label={t('work_ends')} hint={invalidEnd ? t('end_after_start') : undefined}>
+            <input type="time" value={value.work_end} placeholder={company?.work_end} aria-invalid={invalidEnd || undefined}
+              className={invalidEnd ? 'input-invalid' : ''} onChange={(e) => set({ work_end: e.target.value })} />
+          </Field>
+          <Field label={t('late_after')} hint={t('grace_hint')}>
+            <input type="number" min={0} max={240} value={value.late_grace_minutes} placeholder={company ? String(company.late_grace_minutes) : undefined}
+              onChange={(e) => set({ late_grace_minutes: e.target.value })} />
+          </Field>
+          <fieldset className="field-wide plain-fieldset">
+            <legend className="field-label">{t('days_off')}</legend>
+            <div className="chips">
+              {WEEKDAYS.map((i) => (
+                <label key={i} className={`chip ${days.includes(i) ? 'active' : ''}`}>
+                  <input type="checkbox" className="sr-only" checked={days.includes(i)} onChange={() => toggleDay(i)} />{weekdayLabel(i)}
+                </label>
+              ))}
+            </div>
+            {!days.length && <span className="field-hint">{t('no_days_off')}</span>}
+          </fieldset>
+        </div>
+      )}
+    </fieldset>
   )
 }

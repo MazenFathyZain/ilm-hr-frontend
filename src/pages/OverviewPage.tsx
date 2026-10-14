@@ -14,7 +14,7 @@ export function OverviewPage() {
   const { data, error, loading, reload } = useApi(() => api.get<Overview>('/overview'))
 
   if (loading && !data) return <Loading />
-  if (error) return <ErrorBox message={error} onRetry={reload} />
+  if (error) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
 
   const s = data.today
