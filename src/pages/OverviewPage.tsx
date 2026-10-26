@@ -1,17 +1,60 @@
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Overview } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
-import { Card, Empty, ErrorBox, Loading, PageHeader, Person, Stat, StatusBadge } from '../components/ui'
+import { Button, Card, Empty, ErrorBox, Field, Loading, PageHeader, Person, Stat, StatusBadge } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
-import { fmtDay, fmtLongDate, requestSummary, requestTypeLabel } from '../lib/format'
+import { fmtDate, fmtDay, fmtLongDate, fmtNumber, requestSummary, requestTypeLabel } from '../lib/format'
 import { useApi } from '../lib/useApi'
 
 export function OverviewPage() {
   const { user, isManager } = useAuth()
-  const { t } = useI18n()
-  const { data, error, loading, reload } = useApi(() => api.get<Overview>('/overview'))
+  const { t, lang } = useI18n()
+  const [draftFrom, setDraftFrom] = useState<string | null>(null)
+  const [draftTo, setDraftTo] = useState<string | null>(null)
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null)
+  const [rangeError, setRangeError] = useState<'order' | 'length' | null>(null)
+  const { data, error, loading, reload } = useApi(
+    () => api.get<Overview>('/overview', range ?? {}),
+    [range?.from, range?.to],
+  )
+
+  const labels = lang === 'ar' ? {
+    title: 'إحصائيات الحضور', currentMonth: 'الشهر الحالي', apply: 'عرض الفترة', invalid: 'يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.', tooLong: 'الحد الأقصى للفترة هو ٣٦٦ يومًا.',
+    hours: 'إجمالي ساعات العمل', hoursHint: 'المناوبات المكتملة بعد خصم وقت الخروج',
+    attended: 'أيام الحضور', absent: 'أيام الغياب', late: 'أيام التأخير', excused: 'أيام الإجازات والمأموريات',
+    rate: 'نسبة الحضور', employeeDays: 'مجموع أيام الموظفين', finishedDays: 'أيام العمل المكتملة فقط',
+    rateHint: 'من أيام العمل المكتملة المتوقعة',
+  } : {
+    title: 'Attendance statistics', currentMonth: 'Current month', apply: 'Show range', invalid: 'The start date must be on or before the end date.', tooLong: 'Select a range of at most 366 days.',
+    hours: 'Total work hours', hoursHint: 'Completed shifts, excluding time away',
+    attended: 'Attendance days', absent: 'Absent days', late: 'Late days', excused: 'Leave and mission days',
+    rate: 'Attendance rate', employeeDays: 'Employee-days across the selected staff', finishedDays: 'Completed workdays only',
+    rateHint: 'Of expected completed workdays',
+  }
+
+  function applyRange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const from = draftFrom ?? data?.period.from ?? ''
+    const to = draftTo ?? data?.period.to ?? ''
+    if (!from || !to || from > to) { setRangeError('order'); return }
+    if ((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000 > 365) {
+      setRangeError('length')
+      return
+    }
+    setRangeError(null)
+    setRange({ from, to })
+  }
+
+  function resetRange() {
+    setDraftFrom(null)
+    setDraftTo(null)
+    setRangeError(null)
+    if (range) setRange(null)
+    else reload()
+  }
 
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
@@ -37,6 +80,25 @@ export function OverviewPage() {
           hint={<Link to="/requests" className="link-arrow">{t('review_link')} <Icon name="chevron" size={14} className="flip-rtl" /></Link>} />
         <Stat icon="team" label={isManager ? t('teams_count') : t('teams_you_lead')} value={data.teams} hint={t('active_locations', { n: data.locations })} />
       </div>
+
+      <Card title={labels.title} icon="calendar">
+        <form className="toolbar" onSubmit={applyRange}>
+          <Field label={t('from')}><input type="date" required value={draftFrom ?? data.period.from} onChange={(e) => { setDraftFrom(e.target.value); setRangeError(null) }} /></Field>
+          <Field label={t('to')}><input type="date" required value={draftTo ?? data.period.to} onChange={(e) => { setDraftTo(e.target.value); setRangeError(null) }} /></Field>
+          <Button type="submit" icon="search" loading={loading}>{labels.apply}</Button>
+          <Button type="button" variant="secondary" onClick={resetRange}>{labels.currentMonth}</Button>
+        </form>
+        {rangeError && <p className="text-red small" role="alert">{rangeError === 'length' ? labels.tooLong : labels.invalid}</p>}
+        <p className="muted small">{fmtDate(data.period.from)} – {fmtDate(data.period.to)} · {isManager ? t('whole_company') : t('your_team')}</p>
+        <div className="stats-grid" aria-busy={loading}>
+          <Stat icon="clock" label={labels.hours} value={lang === 'ar' ? `${fmtNumber(data.period.worked_hours)} ساعة` : `${fmtNumber(data.period.worked_hours)} h`} tone="blue" hint={labels.hoursHint} />
+          <Stat icon="check" label={labels.attended} value={fmtNumber(data.period.attendance_days)} tone="green" hint={labels.employeeDays} />
+          <Stat icon="alert" label={labels.absent} value={fmtNumber(data.period.absent_days)} tone="red" hint={labels.finishedDays} />
+          <Stat icon="clock" label={labels.late} value={fmtNumber(data.period.late_days)} tone="amber" hint={labels.employeeDays} />
+          <Stat icon="plane" label={labels.excused} value={fmtNumber(data.period.excused_days)} tone="blue" hint={labels.finishedDays} />
+          <Stat icon="team" label={labels.rate} value={`${fmtNumber(data.period.attendance_rate)}%`} tone="gold" hint={labels.rateHint} />
+        </div>
+      </Card>
 
       <div className="grid-2">
         <Card title={t('checkins_14d')} icon="calendar" actions={<span className="legend"><i className="dot dot-on" />{t('on_time')} <i className="dot dot-late" />{t('late')}</span>}>

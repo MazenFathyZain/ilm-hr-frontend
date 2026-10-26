@@ -215,4 +215,14 @@ export interface Overview {
   requests: Record<RequestStatus, number>
   pending_requests: HrRequest[]
   attendance_trend: { date: string; on_time: number; late: number }[]
+  period: {
+    from: string
+    to: string
+    worked_hours: number
+    attendance_days: number
+    absent_days: number
+    late_days: number
+    excused_days: number
+    attendance_rate: number
+  }
 }
