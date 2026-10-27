@@ -218,11 +218,18 @@ export interface Overview {
   period: {
     from: string
     to: string
-    worked_hours: number
-    attendance_days: number
-    absent_days: number
-    late_days: number
-    excused_days: number
-    attendance_rate: number
+    employees: {
+      user_id: number
+      name: string
+      employee_code: string | null
+      team_name: string | null
+      avatar_url: string | null
+      worked_hours: number
+      attendance_days: number
+      absent_days: number
+      late_days: number
+      excused_days: number
+      attendance_rate: number
+    }[]
   }
 }

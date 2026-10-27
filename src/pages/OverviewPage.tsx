@@ -23,15 +23,15 @@ export function OverviewPage() {
 
   const labels = lang === 'ar' ? {
     title: 'إحصائيات الحضور', currentMonth: 'الشهر الحالي', apply: 'عرض الفترة', invalid: 'يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.', tooLong: 'الحد الأقصى للفترة هو ٣٦٦ يومًا.',
-    hours: 'إجمالي ساعات العمل', hoursHint: 'المناوبات المكتملة بعد خصم وقت الخروج',
+    hours: 'ساعات العمل', hoursHint: 'المناوبات المكتملة بعد خصم وقت الخروج',
     attended: 'أيام الحضور', absent: 'أيام الغياب', late: 'أيام التأخير', excused: 'أيام الإجازات والمأموريات',
-    rate: 'نسبة الحضور', employeeDays: 'مجموع أيام الموظفين', finishedDays: 'أيام العمل المكتملة فقط',
+    rate: 'نسبة الحضور', finishedDays: 'أيام العمل المكتملة فقط', empty: 'لا يوجد موظفون ضمن هذا النطاق.',
     rateHint: 'من أيام العمل المكتملة المتوقعة',
   } : {
     title: 'Attendance statistics', currentMonth: 'Current month', apply: 'Show range', invalid: 'The start date must be on or before the end date.', tooLong: 'Select a range of at most 366 days.',
-    hours: 'Total work hours', hoursHint: 'Completed shifts, excluding time away',
+    hours: 'Work hours', hoursHint: 'Completed shifts, excluding time away',
     attended: 'Attendance days', absent: 'Absent days', late: 'Late days', excused: 'Leave and mission days',
-    rate: 'Attendance rate', employeeDays: 'Employee-days across the selected staff', finishedDays: 'Completed workdays only',
+    rate: 'Attendance rate', finishedDays: 'Completed workdays only', empty: 'No employees in this scope.',
     rateHint: 'Of expected completed workdays',
   }
 
@@ -90,14 +90,34 @@ export function OverviewPage() {
         </form>
         {rangeError && <p className="text-red small" role="alert">{rangeError === 'length' ? labels.tooLong : labels.invalid}</p>}
         <p className="muted small">{fmtDate(data.period.from)} – {fmtDate(data.period.to)} · {isManager ? t('whole_company') : t('your_team')}</p>
-        <div className="stats-grid" aria-busy={loading}>
-          <Stat icon="clock" label={labels.hours} value={lang === 'ar' ? `${fmtNumber(data.period.worked_hours)} ساعة` : `${fmtNumber(data.period.worked_hours)} h`} tone="blue" hint={labels.hoursHint} />
-          <Stat icon="check" label={labels.attended} value={fmtNumber(data.period.attendance_days)} tone="green" hint={labels.employeeDays} />
-          <Stat icon="alert" label={labels.absent} value={fmtNumber(data.period.absent_days)} tone="red" hint={labels.finishedDays} />
-          <Stat icon="clock" label={labels.late} value={fmtNumber(data.period.late_days)} tone="amber" hint={labels.employeeDays} />
-          <Stat icon="plane" label={labels.excused} value={fmtNumber(data.period.excused_days)} tone="blue" hint={labels.finishedDays} />
-          <Stat icon="team" label={labels.rate} value={`${fmtNumber(data.period.attendance_rate)}%`} tone="gold" hint={labels.rateHint} />
-        </div>
+        {data.period.employees.length === 0 ? <Empty icon="users">{labels.empty}</Empty> : (
+          <div className="table-wrap" aria-busy={loading}>
+            <table>
+              <thead><tr>
+                <th>{t('employee')}</th>
+                <th className="end" title={labels.hoursHint}>{labels.hours}</th>
+                <th className="end">{labels.attended}</th>
+                <th className="end" title={labels.finishedDays}>{labels.absent}</th>
+                <th className="end">{labels.late}</th>
+                <th className="end" title={labels.finishedDays}>{labels.excused}</th>
+                <th className="end" title={labels.rateHint}>{labels.rate}</th>
+              </tr></thead>
+              <tbody>
+                {data.period.employees.map((employee) => (
+                  <tr key={employee.user_id}>
+                    <td><Link to={`/employees/${employee.user_id}`}><Person name={employee.name} avatar={employee.avatar_url} sub={[employee.employee_code, employee.team_name].filter(Boolean).join(' · ')} /></Link></td>
+                    <td className="end nowrap">{fmtNumber(employee.worked_hours)}</td>
+                    <td className="end">{fmtNumber(employee.attendance_days)}</td>
+                    <td className="end">{fmtNumber(employee.absent_days)}</td>
+                    <td className="end">{fmtNumber(employee.late_days)}</td>
+                    <td className="end">{fmtNumber(employee.excused_days)}</td>
+                    <td className="end nowrap">{fmtNumber(employee.attendance_rate)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <div className="grid-2">
