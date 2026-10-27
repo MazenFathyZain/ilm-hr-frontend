@@ -226,6 +226,8 @@ export interface Overview {
       avatar_url: string | null
       worked_hours: number
       average_hours_per_day: number
+      worked_minutes: number
+      average_minutes_per_day: number
       attendance_days: number
       absent_days: number
       late_days: number

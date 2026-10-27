@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { Button, Card, Empty, ErrorBox, Field, Loading, PageHeader, Person, Stat, StatusBadge } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
-import { fmtDate, fmtDay, fmtLongDate, fmtNumber, requestSummary, requestTypeLabel } from '../lib/format'
+import { fmtDate, fmtDay, fmtLongDate, fmtMinutes, fmtNumber, requestSummary, requestTypeLabel } from '../lib/format'
 import { useApi } from '../lib/useApi'
 
 export function OverviewPage() {
@@ -107,8 +107,8 @@ export function OverviewPage() {
                 {data.period.employees.map((employee) => (
                   <tr key={employee.user_id}>
                     <td><Link to={`/employees/${employee.user_id}`}><Person name={employee.name} avatar={employee.avatar_url} sub={[employee.employee_code, employee.team_name].filter(Boolean).join(' · ')} /></Link></td>
-                    <td className="end nowrap">{fmtNumber(employee.worked_hours)}</td>
-                    <td className="end nowrap">{fmtNumber(employee.average_hours_per_day)}</td>
+                    <td className="end nowrap">{fmtMinutes(employee.worked_minutes)}</td>
+                    <td className="end nowrap">{fmtMinutes(employee.average_minutes_per_day)}</td>
                     <td className="end">{fmtNumber(employee.attendance_days)}</td>
                     <td className="end">{fmtNumber(employee.absent_days)}</td>
                     <td className="end">{fmtNumber(employee.late_days)}</td>
