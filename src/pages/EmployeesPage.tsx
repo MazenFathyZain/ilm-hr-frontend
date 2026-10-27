@@ -242,21 +242,15 @@ const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
 function ScheduleFields({ value, onChange, company, invalidEnd }: {
   value: ScheduleState; onChange: (v: ScheduleState) => void; company: CompanySchedule | null; invalidEnd: boolean
 }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const set = (patch: Partial<ScheduleState>) => onChange({ ...value, ...patch })
   const days = value.weekend_days ?? company?.weekend_days ?? []
 
   function toggleCompany(useCompany: boolean) {
-    // Switching to a custom schedule starts from the company values so only the differences need typing.
-    if (useCompany || !company) return set({ useCompany })
-    set({
-      useCompany,
-      work_start: value.work_start || company.work_start,
-      work_end: value.work_end || company.work_end,
-      late_grace_minutes: value.late_grace_minutes || String(company.late_grace_minutes),
-      weekend_days: value.weekend_days ?? [...company.weekend_days],
-    })
+    // Leave unset fields as NULL so they continue to follow future company changes.
+    set({ useCompany })
   }
+  const toggleCompanyDays = (useCompanyDays: boolean) => set({ weekend_days: useCompanyDays ? null : [...days] })
   const toggleDay = (d: number) => set({ weekend_days: days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b) })
 
   return (
@@ -272,7 +266,9 @@ function ScheduleFields({ value, onChange, company, invalidEnd }: {
                 hours: `${company.work_start}–${company.work_end}`,
                 days: fmtDaysOff(company.weekend_days) || t('no_days_off'),
               })
-              : t('custom_schedule_hint')}
+              : lang === 'ar'
+                ? 'غيّر الأيام أو المواعيد المطلوبة فقط؛ الحقول الفارغة تتبع إعدادات الشركة.'
+                : 'Change only the days or hours needed; empty fields follow company settings.'}
           </span>
         </span>
       </label>
@@ -291,14 +287,24 @@ function ScheduleFields({ value, onChange, company, invalidEnd }: {
           </Field>
           <fieldset className="field-wide plain-fieldset">
             <legend className="field-label">{t('days_off')}</legend>
-            <div className="chips">
-              {WEEKDAYS.map((i) => (
-                <label key={i} className={`chip ${days.includes(i) ? 'active' : ''}`}>
-                  <input type="checkbox" className="sr-only" checked={days.includes(i)} onChange={() => toggleDay(i)} />{weekdayLabel(i)}
-                </label>
-              ))}
-            </div>
-            {!days.length && <span className="field-hint">{t('no_days_off')}</span>}
+            <label className="switch-row">
+              <input type="checkbox" checked={value.weekend_days === null} onChange={(e) => toggleCompanyDays(e.target.checked)} />
+              <span><strong>{lang === 'ar' ? 'استخدام أيام الراحة الأسبوعية للشركة' : 'Use company days off'}</strong></span>
+            </label>
+            {value.weekend_days === null ? (
+              <span className="field-hint">{fmtDaysOff(days) || t('no_days_off')}</span>
+            ) : (
+              <>
+                <div className="chips">
+                  {WEEKDAYS.map((i) => (
+                    <label key={i} className={`chip ${days.includes(i) ? 'active' : ''}`}>
+                      <input type="checkbox" className="sr-only" checked={days.includes(i)} onChange={() => toggleDay(i)} />{weekdayLabel(i)}
+                    </label>
+                  ))}
+                </div>
+                {!days.length && <span className="field-hint">{t('no_days_off')}</span>}
+              </>
+            )}
           </fieldset>
         </div>
       )}
