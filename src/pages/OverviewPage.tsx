@@ -23,13 +23,13 @@ export function OverviewPage() {
 
   const labels = lang === 'ar' ? {
     title: 'إحصائيات الحضور', currentMonth: 'الشهر الحالي', apply: 'عرض الفترة', invalid: 'يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.', tooLong: 'الحد الأقصى للفترة هو ٣٦٦ يومًا.',
-    hours: 'ساعات العمل', hoursHint: 'المناوبات المكتملة بعد خصم وقت الخروج',
+    hours: 'ساعات العمل', hoursHint: 'المناوبات المكتملة بعد خصم وقت الخروج', averageHours: 'متوسط الساعات يوميًا', averageHoursHint: 'إجمالي ساعات العمل ÷ أيام العمل التي اكتمل فيها تسجيل الانصراف',
     attended: 'أيام الحضور', absent: 'أيام الغياب', late: 'أيام التأخير', excused: 'أيام الإجازات والمأموريات',
     rate: 'نسبة الحضور', finishedDays: 'أيام العمل المكتملة فقط', empty: 'لا يوجد موظفون ضمن هذا النطاق.',
     rateHint: 'من أيام العمل المكتملة المتوقعة',
   } : {
     title: 'Attendance statistics', currentMonth: 'Current month', apply: 'Show range', invalid: 'The start date must be on or before the end date.', tooLong: 'Select a range of at most 366 days.',
-    hours: 'Work hours', hoursHint: 'Completed shifts, excluding time away',
+    hours: 'Work hours', hoursHint: 'Completed shifts, excluding time away', averageHours: 'Avg. hours/day', averageHoursHint: 'Total work hours divided by days with a completed check-out',
     attended: 'Attendance days', absent: 'Absent days', late: 'Late days', excused: 'Leave and mission days',
     rate: 'Attendance rate', finishedDays: 'Completed workdays only', empty: 'No employees in this scope.',
     rateHint: 'Of expected completed workdays',
@@ -96,6 +96,7 @@ export function OverviewPage() {
               <thead><tr>
                 <th>{t('employee')}</th>
                 <th className="end" title={labels.hoursHint}>{labels.hours}</th>
+                <th className="end" title={labels.averageHoursHint}>{labels.averageHours}</th>
                 <th className="end">{labels.attended}</th>
                 <th className="end" title={labels.finishedDays}>{labels.absent}</th>
                 <th className="end">{labels.late}</th>
@@ -107,6 +108,7 @@ export function OverviewPage() {
                   <tr key={employee.user_id}>
                     <td><Link to={`/employees/${employee.user_id}`}><Person name={employee.name} avatar={employee.avatar_url} sub={[employee.employee_code, employee.team_name].filter(Boolean).join(' · ')} /></Link></td>
                     <td className="end nowrap">{fmtNumber(employee.worked_hours)}</td>
+                    <td className="end nowrap">{fmtNumber(employee.average_hours_per_day)}</td>
                     <td className="end">{fmtNumber(employee.attendance_days)}</td>
                     <td className="end">{fmtNumber(employee.absent_days)}</td>
                     <td className="end">{fmtNumber(employee.late_days)}</td>

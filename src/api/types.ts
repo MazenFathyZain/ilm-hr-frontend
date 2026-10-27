@@ -225,6 +225,7 @@ export interface Overview {
       team_name: string | null
       avatar_url: string | null
       worked_hours: number
+      average_hours_per_day: number
       attendance_days: number
       absent_days: number
       late_days: number
