@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { api } from '../api/client'
-import type { Payslip, Settings, User } from '../api/types'
+import type { Payslip, SalaryType, Settings, User } from '../api/types'
 import { useToast } from '../components/Toast'
-import { Button, Card, Empty, ErrorBox, Field, Loading, Modal, PageHeader, Person, StatusBadge } from '../components/ui'
+import { Badge, Button, Card, Empty, ErrorBox, Field, Loading, Modal, PageHeader, Person, StatusBadge } from '../components/ui'
 import { useI18n } from '../i18n/I18nContext'
 import { DEDUCTION_KEYS, EARNING_KEYS, deductionLabel, earningLabel, fmtMoney, fmtMonth, thisMonth } from '../lib/format'
 import { useApi } from '../lib/useApi'
 
 interface Suggestion {
   basic_salary: number
+  salary_type: SalaryType
+  hourly_rate: number
   earnings: Record<string, number>
   deductions: Record<string, number>
-  basis: { absent_days: number; late_days: number; overtime_hours: number; daily_rate: number }
+  basis: { absent_days: number; late_days: number; overtime_hours: number; daily_rate: number; worked_hours: number; hourly_rate: number }
 }
 
 export function PayrollPage() {
@@ -70,7 +72,10 @@ export function PayrollPage() {
                 {data.map((p) => (
                   <tr key={p.id} onClick={() => setEditing({ userId: p.user_id, payslip: p })}>
                     <td><Person name={p.user_name} sub={p.employee_code} /></td>
-                    <td className="end">{fmtMoney(p.basic_salary, cur)}</td>
+                    <td className="end">
+                      {fmtMoney(p.basic_salary, cur)}
+                      {p.salary_type === 'hourly' && <div><Badge tone="gold">{t('salary_hourly')}</Badge></div>}
+                    </td>
                     <td className="right text-green">+{fmtMoney(p.total_earnings, cur)}</td>
                     <td className="right text-red">−{fmtMoney(p.total_deductions, cur)}</td>
                     <td className="end"><strong>{fmtMoney(p.net_salary, cur)}</strong></td>
@@ -100,6 +105,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
   const [earnings, setEarnings] = useState<Record<string, number>>(payslip?.earnings ?? Object.fromEntries(EARNING_KEYS.map((k) => [k, 0])))
   const [deductions, setDeductions] = useState<Record<string, number>>(payslip?.deductions ?? Object.fromEntries(DEDUCTION_KEYS.map((k) => [k, 0])))
   const [basis, setBasis] = useState<Suggestion['basis'] | null>(null)
+  const [salaryType, setSalaryType] = useState<SalaryType>(payslip?.salary_type ?? 'monthly')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<unknown>(null)
 
@@ -109,6 +115,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
     try {
       const s = await api.get<Suggestion>('/payslips/suggest', { user_id: forUser, month })
       setBasic(s.basic_salary)
+      setSalaryType(s.salary_type)
       // Keep manually entered items (tax, insurance…) and refresh the calculated ones.
       setEarnings((e) => ({ ...e, overtime: s.earnings.overtime, reward: s.earnings.reward, other: s.earnings.other }))
       setDeductions((d) => ({ ...d, absence: s.deductions.absence, penalties: s.deductions.penalties }))
@@ -140,6 +147,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
   const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + (Number(b) || 0), 0)
   const net = basic + sum(earnings) - sum(deductions)
   const name = payslip?.user_name ?? users.data?.find((u) => String(u.id) === uid)?.name
+  const hourly = salaryType === 'hourly'
 
   return (
     <Modal wide title={name ? t('payslip_title', { name, month: fmtMonth(month) }) : t('new_payslip', { month: fmtMonth(month) })} onClose={onClose} error={formError} footer={
@@ -160,7 +168,7 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
             </select>
           </Field>
         )}
-        <Field label={t('basic_salary')}><input type="number" min={0} step="0.01" value={basic} onChange={(e) => setBasic(Number(e.target.value))} /></Field>
+        <Field label={hourly ? t('pay_from_hours') : t('basic_salary')}><input type="number" min={0} step="0.01" value={basic} onChange={(e) => setBasic(Number(e.target.value))} /></Field>
         <div className="field">
           <span className="field-label">&nbsp;</span>
           <Button variant="secondary" icon="clock" disabled={!uid} onClick={() => suggest()}>{t('recalc')}</Button>
@@ -168,7 +176,9 @@ function PayslipEditor({ month, currency, userId, payslip, onClose, onSaved }: {
       </div>
       {basis && (
         <p className="muted small">
-          {t('basis_text', { absent: basis.absent_days, late: basis.late_days, ot: basis.overtime_hours, rate: fmtMoney(basis.daily_rate, currency) })}
+          {hourly
+            ? t('basis_hourly_text', { hours: basis.worked_hours, rate: fmtMoney(basis.hourly_rate, currency) })
+            : t('basis_text', { absent: basis.absent_days, late: basis.late_days, ot: basis.overtime_hours, rate: fmtMoney(basis.daily_rate, currency) })}
         </p>
       )}
       <div className="grid-2">

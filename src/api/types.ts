@@ -1,4 +1,5 @@
 export type Role = 'manager' | 'team_leader' | 'employee'
+export type SalaryType = 'monthly' | 'hourly'
 
 export interface LocationRef { id: number; name: string }
 
@@ -31,6 +32,8 @@ export interface User {
   supervisor_name: string | null
   hire_date: string | null
   basic_salary?: number
+  salary_type: SalaryType
+  hourly_rate?: number
   annual_leave_balance: number
   casual_leave_balance: number
   is_active: boolean
@@ -157,6 +160,8 @@ export interface Payslip {
   employee_code: string | null
   month: string
   basic_salary: number
+  salary_type: SalaryType
+  hourly_rate: number
   earnings: Record<string, number>
   deductions: Record<string, number>
   total_earnings: number

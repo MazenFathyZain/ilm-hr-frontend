@@ -121,7 +121,11 @@ export function EmployeeDetailPage() {
               </dd>
               <dt>{t('days_off')}</dt><dd>{fmtDaysOff(u.schedule.weekend_days) || t('no_days_off')}</dd>
             </>}
-            {u.basic_salary !== undefined && <><dt>{t('basic_salary')}</dt><dd>{fmtMoney(u.basic_salary)}</dd></>}
+            <dt>{t('salary_type')}</dt>
+            <dd><Badge tone={u.salary_type === 'hourly' ? 'gold' : 'blue'}>{u.salary_type === 'hourly' ? t('salary_hourly') : t('salary_monthly')}</Badge></dd>
+            {u.salary_type === 'hourly'
+              ? u.hourly_rate !== undefined && <><dt>{t('hourly_rate')}</dt><dd>{fmtMoney(u.hourly_rate)}</dd></>
+              : u.basic_salary !== undefined && <><dt>{t('basic_salary')}</dt><dd>{fmtMoney(u.basic_salary)}</dd></>}
             <dt>{t('checkin_locations')}</dt>
             <dd>{u.locations.length
               ? <div className="tag-list">{u.locations.map((l) => <span key={l.id} className="tag"><Icon name="pin" size={12} />{l.name}</span>)}</div>

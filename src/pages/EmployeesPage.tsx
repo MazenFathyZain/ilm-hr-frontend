@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import type { Location, Role, Settings, Team, User } from '../api/types'
+import type { Location, Role, SalaryType, Settings, Team, User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Icon } from '../components/Icon'
 import { useToast } from '../components/Toast'
@@ -130,6 +130,8 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
     team_id: user?.team_id ? String(user.team_id) : '',
     hire_date: user?.hire_date ?? '',
     basic_salary: String(user?.basic_salary ?? ''),
+    salary_type: (user?.salary_type ?? 'monthly') as SalaryType,
+    hourly_rate: user?.hourly_rate ? String(user.hourly_rate) : '',
     annual_leave_balance: user ? String(user.annual_leave_balance) : '',
     casual_leave_balance: user ? String(user.casual_leave_balance) : '',
     location_ids: user?.locations.map((l) => l.id) ?? [],
@@ -152,6 +154,7 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
       ...form,
       team_id: form.team_id ? Number(form.team_id) : null,
       basic_salary: form.basic_salary === '' ? 0 : Number(form.basic_salary),
+      hourly_rate: form.hourly_rate === '' ? 0 : Number(form.hourly_rate),
     }
     // Own schedule: empty fields (and the whole schedule when "use company schedule" is on) fall back to the company default.
     if (sched.useCompany) {
@@ -211,7 +214,17 @@ export function EmployeeForm({ user, onClose, onSaved }: { user: User | null; on
         <Field label={t('national_id')}><input inputMode="numeric" dir="ltr" value={form.national_id} onChange={(e) => set('national_id', e.target.value)} /></Field>
         <Field label={t('phone')}><input type="tel" dir="ltr" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
         <Field label={t('hire_date')}><input type="date" value={form.hire_date} onChange={(e) => set('hire_date', e.target.value)} /></Field>
-        <Field label={t('basic_salary')}><input type="number" min={0} step="0.01" value={form.basic_salary} onChange={(e) => set('basic_salary', e.target.value)} /></Field>
+        <Field label={t('salary_type')} hint={form.salary_type === 'hourly' ? t('salary_hourly_hint') : t('salary_monthly_hint')}>
+          <select value={form.salary_type} onChange={(e) => set('salary_type', e.target.value as SalaryType)}>
+            <option value="monthly">{t('salary_monthly')}</option>
+            <option value="hourly">{t('salary_hourly')}</option>
+          </select>
+        </Field>
+        {form.salary_type === 'hourly' ? (
+          <Field label={`${t('hourly_rate')} *`}><input type="number" required min={0.01} step="0.01" value={form.hourly_rate} onChange={(e) => set('hourly_rate', e.target.value)} /></Field>
+        ) : (
+          <Field label={t('basic_salary')}><input type="number" min={0} step="0.01" value={form.basic_salary} onChange={(e) => set('basic_salary', e.target.value)} /></Field>
+        )}
         <Field label={t('annual_leave_days')} hint={user ? undefined : t('defaults_hint')}><input type="number" min={0} value={form.annual_leave_balance} onChange={(e) => set('annual_leave_balance', e.target.value)} /></Field>
         <Field label={t('casual_leave_days')} hint={user ? undefined : t('defaults_hint')}><input type="number" min={0} value={form.casual_leave_balance} onChange={(e) => set('casual_leave_balance', e.target.value)} /></Field>
 
